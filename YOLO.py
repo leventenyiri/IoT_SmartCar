@@ -5,6 +5,11 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import subprocess
 import yaml
+import cv2
+import matplotlib.pyplot as plt
+import urllib.request
+import numpy as np
+import concurrent.futures
 
 # Path to your YOLOv5 directory
 YOLOV5_DIR = r'C:\IoT_SmartCar\Python\yolov5'
@@ -14,6 +19,8 @@ WATCH_DIRECTORY = r'C:\IoT_SmartCar\Python\new_image'
 RESULTS_FILE = r'C:\IoT_SmartCar\Python\result\detection_results.txt'
 # Path to the class labels file
 CLASS_NAMES_FILE = r'C:\IoT_SmartCar\Python\yolov5\data\coco.yaml'
+
+IMAGE_URL = "http://192.168.1.105/cam-hi.jpg"
 
 label_array = [
     "person", "bicycle", "car", "motorcycle", "airplane",
@@ -34,14 +41,33 @@ label_array = [
     "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
 ]
 
+url = "http://192.168.1.105/cam-hi.jpg"
+
+i = 0
 
 # Function to clear the results file before starting the observer
 def initialize_results_file():
     with open(RESULTS_FILE, 'w') as f:
         f.write("")
 
+def download_image(image_url, save_dir):
+    image_path = os.path.join(save_dir, f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg")
+    try:
+        urllib.request.urlretrieve(image_url, image_path)
+        print(f"Downloaded image saved to {image_path}")
+        return image_path
+    except Exception as e:
+        print(f"Failed to download image: {str(e)}")
+        return None
+
 def read_and_write_detection_results(image_path, results_file):
-    labels_dir = os.path.join(YOLOV5_DIR, 'runs/detect/exp/labels')
+    global i
+    if i==0:
+        labels_dir = os.path.join(YOLOV5_DIR, 'runs/detect/exp/labels')
+    else:
+        labels_dir = os.path.join(YOLOV5_DIR, f'runs/detect/exp{i}/labels')
+        
+    i = i+1
     base_name = os.path.basename(image_path)
     base_name_no_ext = os.path.splitext(base_name)[0]
     txt_file_path = os.path.join(labels_dir, f'{base_name_no_ext}.txt')
@@ -49,7 +75,7 @@ def read_and_write_detection_results(image_path, results_file):
     if os.path.exists(txt_file_path):
         with open(txt_file_path, 'r') as file:
             detections = file.readlines()
-        with open(results_file, 'w') as f:
+        with open(results_file, 'a') as f:
             for detection in detections:
                 class_id, x_center, y_center, width, height = map(float, detection.split())
                 class_name = label_array[int(class_id)]
@@ -67,7 +93,10 @@ class Watcher:
         self.observer.start()
         try:
             while True:
-                time.sleep(5)
+                # Download image at regular intervals
+                image_path = download_image(IMAGE_URL, self.directory_to_watch)
+                if image_path:
+                    event_handler.process_image(image_path)
         except:
             self.observer.stop()
             print("Observer Stopped")
@@ -85,6 +114,7 @@ class Handler(FileSystemEventHandler):
             self.process_image(event.src_path)
 
     def process_image(self, image_path):
+        print("Pulling the image from the website...")
         print(f"Detected new image: {image_path}")
         subprocess.run([
             'python',
