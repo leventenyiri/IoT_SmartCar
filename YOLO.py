@@ -1,15 +1,12 @@
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import subprocess
 import yaml
-import cv2
-import matplotlib.pyplot as plt
 import urllib.request
-import numpy as np
-import concurrent.futures
+from flask import Flask, send_from_directory, render_template
 
 # Path to your YOLOv5 directory
 YOLOV5_DIR = r'C:\IoT_SmartCar\Python\yolov5'
@@ -21,6 +18,8 @@ RESULTS_FILE = r'C:\IoT_SmartCar\Python\result\detection_results.txt'
 CLASS_NAMES_FILE = r'C:\IoT_SmartCar\Python\yolov5\data\coco.yaml'
 
 IMAGE_URL = "http://192.168.1.105/cam-hi.jpg"
+
+app = Flask(__name__)
 
 label_array = [
     "person", "bicycle", "car", "motorcycle", "airplane",
@@ -44,6 +43,27 @@ label_array = [
 url = "http://192.168.1.105/cam-hi.jpg"
 
 i = 0
+
+
+
+@app.route('/')
+def index():
+    # List all images in the directory and pick the newest
+    image_files = [f for f in os.listdir(WATCH_DIRECTORY) if f.endswith('.jpg')]
+    if image_files:
+        image_files.sort(reverse=True)  # Sort files by date, newest first
+        newest_image = image_files[0]  # Select the newest image
+        return render_template('index.html', newest_image=newest_image)
+    return "No images available"
+
+@app.route('/images/<filename>')
+def image(filename):
+    global i
+    if i==0:
+        WATCH_DIRECTORY = os.path.join(YOLOV5_DIR, 'runs/detect/exp')
+    else:
+        WATCH_DIRECTORY = os.path.join(YOLOV5_DIR, f'runs/detect/exp{i}')
+    return send_from_directory(WATCH_DIRECTORY, filename)
 
 # Function to clear the results file before starting the observer
 def initialize_results_file():
@@ -97,6 +117,7 @@ class Watcher:
                 image_path = download_image(IMAGE_URL, self.directory_to_watch)
                 if image_path:
                     event_handler.process_image(image_path)
+                
         except:
             self.observer.stop()
             print("Observer Stopped")
@@ -129,5 +150,8 @@ class Handler(FileSystemEventHandler):
         read_and_write_detection_results(image_path, RESULTS_FILE)
 
 if __name__ == "__main__":
+    from threading import Thread
+    thread = Thread(target=lambda: app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False))
+    thread.start()
     w = Watcher(WATCH_DIRECTORY)
     w.run()
