@@ -15,19 +15,32 @@ RESULTS_FILE = r'C:\IoT_SmartCar\Python\result\detection_results.txt'
 # Path to the class labels file
 CLASS_NAMES_FILE = r'C:\IoT_SmartCar\Python\yolov5\data\coco.yaml'
 
-def load_class_labels(names_file_path):
-    with open(names_file_path, 'r', encoding='utf-8') as file:
-        data = yaml.safe_load(file)
-    return data['names']
+label_array = [
+    "person", "bicycle", "car", "motorcycle", "airplane",
+    "bus", "train", "truck", "boat", "traffic light",
+    "fire hydrant", "stop sign", "parking meter", "bench", "bird",
+    "cat", "dog", "horse", "sheep", "cow",
+    "elephant", "bear", "zebra", "giraffe", "backpack",
+    "umbrella", "handbag", "tie", "suitcase", "frisbee",
+    "skis", "snowboard", "sports ball", "kite", "baseball bat",
+    "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle",
+    "wine glass", "cup", "fork", "knife", "spoon",
+    "bowl", "banana", "apple", "sandwich", "orange",
+    "broccoli", "carrot", "hot dog", "pizza", "donut",
+    "cake", "chair", "couch", "potted plant", "bed",
+    "dining table", "toilet", "tv", "laptop", "mouse",
+    "remote", "keyboard", "cell phone", "microwave", "oven",
+    "toaster", "sink", "refrigerator", "book", "clock",
+    "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
+]
 
-class_labels = load_class_labels(CLASS_NAMES_FILE)
 
 # Function to clear the results file before starting the observer
 def initialize_results_file():
     with open(RESULTS_FILE, 'w') as f:
         f.write("")
 
-def read_and_write_detection_results(image_path, results_file, class_labels):
+def read_and_write_detection_results(image_path, results_file):
     labels_dir = os.path.join(YOLOV5_DIR, 'runs/detect/exp/labels')
     base_name = os.path.basename(image_path)
     base_name_no_ext = os.path.splitext(base_name)[0]
@@ -37,11 +50,10 @@ def read_and_write_detection_results(image_path, results_file, class_labels):
         with open(txt_file_path, 'r') as file:
             detections = file.readlines()
         with open(results_file, 'w') as f:
-            f.write(f'Detection Results for {image_path}:\n')
             for detection in detections:
                 class_id, x_center, y_center, width, height = map(float, detection.split())
-                class_name = class_labels[int(class_id)]
-                f.write(f'{class_name} detected at ({x_center}, {y_center}, {width}, {height})\n')
+                class_name = label_array[int(class_id)]
+                f.write(f'{class_name} detected at (x:{x_center},y: {y_center},width: {width},height: {height})\n')
 
 class Watcher:
     def __init__(self, directory_to_watch):
@@ -84,7 +96,7 @@ class Handler(FileSystemEventHandler):
             '--save-txt'
         ], capture_output=True, text=True, encoding='utf-8')
 
-        read_and_write_detection_results(image_path, RESULTS_FILE, class_labels)
+        read_and_write_detection_results(image_path, RESULTS_FILE)
 
 if __name__ == "__main__":
     w = Watcher(WATCH_DIRECTORY)
