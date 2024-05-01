@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Latest Processed Image</title>
+    <script>
+        function refreshImage() {
+            var img = document.getElementById('latestImage');
+            img.src = "{{ url_for('image', filename=newest_image) }}" + "?timestamp=" + new Date().getTime();
+        }
+        setInterval(refreshImage, 5000); // Refresh image every 5000 milliseconds (5 seconds)
+    </script>
+</head>
+<body>
+    <h1>Latest Processed Image</h1>
+    {% if newest_image %}
+        <img id="latestImage" src="{{ url_for('image', filename=newest_image) }}" width="640" alt="Processed Image">
+    {% else %}
+        <p>No images to display.</p>
+    {% endif %}
+</body>
+</html>
